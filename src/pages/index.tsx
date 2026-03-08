@@ -9,6 +9,7 @@ import {
 import Cropper from "react-easy-crop";
 import getCroppedImg from "../cropImage";
 import { openDB } from "idb";
+import { toPng } from "html-to-image";
 
 export async function getDb() {
   return openDB("collage-projects", 1, {
@@ -71,6 +72,15 @@ const ProjectContext = createContext<ProjectProps>({} as ProjectProps);
 async function urlToBlob(url: string): Promise<Blob> {
   const response = await fetch(url);
   return await response.blob();
+}
+
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 function useProject() {
@@ -216,6 +226,18 @@ export default function HomePage() {
       }}
     >
       <div className="flex flex-col-reverse md:flex-row h-dvh bg-gray-100 font-sans overflow-hidden print:h-auto print:overflow-visible print:block print:bg-white">
+        <style>{`
+          @media print {
+            @page {
+              margin: 0;
+            }
+            body {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+              margin: 0;
+            }
+          }
+        `}</style>
         {/* Sidebar */}
         <SideBar />
 
@@ -253,9 +275,10 @@ export default function HomePage() {
             }
           }}
         >
-          <div className="min-h-full min-w-full flex p-4 md:p-8 print:p-0 print:block">
+          <div className="min-h-full min-w-full flex items-center justify-center p-4 md:p-8 print:p-0 print:block">
             <div
-              className="shadow-lg transition-all relative bg-white m-auto print:shadow-none print:m-0 print:!max-w-none print:w-[100vw] print:h-[100vh]"
+              id="collage-export-target"
+              className="shadow-lg transition-all relative bg-white print:shadow-none print:m-0 print:![max-width:none] print:w-[98%] print:mx-auto print:![height:auto] print:break-inside-avoid print:box-border"
               style={{
                 ...getTemplateStyle(),
                 gap: `${layoutOptions.margin}px`,
@@ -323,6 +346,7 @@ export default function HomePage() {
                         }}
                         className="absolute top-2 right-2 bg-black/50 text-white w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm hover:bg-black/80 z-10 print:hidden"
                         title="Remove Image"
+                        data-hide-on-export="true"
                       >
                         ✕
                       </button>
@@ -333,6 +357,7 @@ export default function HomePage() {
                         }}
                         className="absolute bottom-2 right-2 bg-black/50 text-white w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-sm md:text-lg hover:bg-black/80 z-10 print:hidden"
                         title="Edit Image"
+                        data-hide-on-export="true"
                       >
                         ✎
                       </button>
@@ -375,10 +400,14 @@ export default function HomePage() {
                       className={`text-2xl md:text-3xl mb-1 ${
                         activeSlot === index ? "text-blue-500" : "text-gray-300"
                       }`}
+                      data-hide-on-export="true"
                     >
                       📥
                     </span>
-                    <p className="text-xs md:text-sm font-medium text-center whitespace-pre-wrap">
+                    <p
+                      className="text-xs md:text-sm font-medium text-center whitespace-pre-wrap"
+                      data-hide-on-export="true"
+                    >
                       {activeSlot === index
                         ? `Selected\n(Tap image to place)`
                         : `Tap to select\nor Drop`}
@@ -432,8 +461,13 @@ function SideBar() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const url = URL.createObjectURL(files[0]!);
-      handleAddImage(url);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          handleAddImage(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(files[0]!);
     }
   };
 
@@ -521,15 +555,19 @@ function SideBar() {
       const proj = await db.get("projects", id);
       if (!proj) return;
 
-      const restoreUploaded = proj.uploadedImages.map((img: any) => ({
-        id: img.id,
-        src: URL.createObjectURL(img.blob),
-      }));
+      const restoreUploaded = await Promise.all(
+        proj.uploadedImages.map(async (img: any) => ({
+          id: img.id,
+          src: await blobToDataUrl(img.blob),
+        })),
+      );
 
-      const restoreCollage = proj.collageImages.map((img: any) => {
-        if (!img) return null;
-        return { id: img.id, src: URL.createObjectURL(img.blob) };
-      });
+      const restoreCollage = await Promise.all(
+        proj.collageImages.map(async (img: any) => {
+          if (!img) return null;
+          return { id: img.id, src: await blobToDataUrl(img.blob) };
+        }),
+      );
 
       setTemplate(proj.template);
       setPageSize(proj.pageSize);
@@ -552,6 +590,34 @@ function SideBar() {
       await loadSavedProjectsList();
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleSaveImage = async () => {
+    const node = document.getElementById("collage-export-target");
+    if (!node) return;
+    try {
+      const dataUrl = await toPng(node, {
+        pixelRatio: 2, // Better resolution
+        backgroundColor: layoutOptions.borderColor,
+        style: { margin: "0" }, // Prevents flex layout from shifting the canvas internally
+        filter: (el: any) => {
+          // Hide specific UI elements (like edit/delete buttons) from the final exported image
+          if (el?.hasAttribute && el.hasAttribute("data-hide-on-export")) {
+            return false;
+          }
+          return true;
+        },
+      });
+      const link = document.createElement("a");
+      link.download = `collage-${new Date().toISOString().split("T")[0]}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error("Failed to save image", err);
+      alert(
+        "Failed to export image. Ensure all loaded images come from your device to prevent security rules blocking the export.",
+      );
     }
   };
 
@@ -878,15 +944,23 @@ function SideBar() {
 
       {collageImages.length > 0 && (
         <div className="md:mt-auto flex flex-col md:flex-row gap-2 min-w-[200px] mb-2 md:mb-0 ml-4 md:ml-0 self-center md:w-full md:self-stretch items-center print:hidden">
-          <button
-            onClick={() => window.print()}
-            className="flex-1 w-full bg-green-100 text-green-700 py-1.5 md:py-2 rounded text-xs md:text-base font-medium hover:bg-green-200 whitespace-nowrap"
-          >
-            🖨️ Print
-          </button>
+          <div className="flex flex-1 w-full gap-2">
+            <button
+              onClick={() => window.print()}
+              className="flex-1 bg-green-100 text-green-700 py-1.5 md:py-2 rounded text-xs md:text-base font-medium hover:bg-green-200 whitespace-nowrap transition-colors"
+            >
+              🖨️ Print
+            </button>
+            <button
+              onClick={handleSaveImage}
+              className="flex-1 bg-blue-100 text-blue-700 py-1.5 md:py-2 rounded text-xs md:text-base font-medium hover:bg-blue-200 whitespace-nowrap transition-colors"
+            >
+              💾 Save
+            </button>
+          </div>
           <button
             onClick={() => setCollageImages([])}
-            className="flex-1 w-full bg-red-100 text-red-700 py-1.5 md:py-2 rounded text-xs md:text-base font-medium hover:bg-red-200 whitespace-nowrap"
+            className="flex-1 md:flex-none w-full md:w-auto px-4 bg-red-100 text-red-700 py-1.5 md:py-2 rounded text-xs md:text-base font-medium hover:bg-red-200 whitespace-nowrap transition-colors"
           >
             Trash All
           </button>
