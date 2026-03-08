@@ -9,7 +9,7 @@ import {
 import Cropper from "react-easy-crop";
 import getCroppedImg from "../cropImage";
 import { openDB } from "idb";
-import { toPng } from "html-to-image";
+import { domToJpeg } from "modern-screenshot";
 
 export async function getDb() {
   return openDB("collage-projects", 1, {
@@ -461,13 +461,15 @@ function SideBar() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          handleAddImage(event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(files[0]!);
+      Array.from(files).forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            handleAddImage(event.target.result as string);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
     }
   };
 
@@ -597,14 +599,13 @@ function SideBar() {
     const node = document.getElementById("collage-export-target");
     if (!node) return;
     try {
-      const dataUrl = await toPng(node, {
-        pixelRatio: 2, // Better resolution
+      const dataUrl = await domToJpeg(node, {
+        scale: 2, // Better resolution
         backgroundColor: layoutOptions.borderColor,
-        style: { margin: "0" }, // Prevents flex layout from shifting the canvas internally
-        filter: (el: any) => {
+        filter: (el: Node) => {
           // Hide specific UI elements (like edit/delete buttons) from the final exported image
-          if (el?.hasAttribute && el.hasAttribute("data-hide-on-export")) {
-            return false;
+          if (el instanceof Element) {
+            return !el.hasAttribute("data-hide-on-export");
           }
           return true;
         },
@@ -745,6 +746,7 @@ function SideBar() {
             <input
               type="file"
               accept="image/*"
+              multiple
               onChange={handleFileUpload}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
