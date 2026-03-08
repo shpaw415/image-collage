@@ -4,6 +4,7 @@ import {
   useContext,
   useCallback,
   useEffect,
+  type JSX,
 } from "react";
 import Cropper from "react-easy-crop";
 import getCroppedImg from "../cropImage";
@@ -83,12 +84,8 @@ type ProjectProps = {
   setCollageImages: React.Dispatch<React.SetStateAction<(ImageItem | null)[]>>;
   uploadedImages: ImageItem[];
   setUploadedImages: React.Dispatch<React.SetStateAction<ImageItem[]>>;
-  borderWidth: number;
-  borderColor: string;
-  margin: number;
-  setBorderWidth: React.Dispatch<React.SetStateAction<number>>;
-  setBorderColor: React.Dispatch<React.SetStateAction<string>>;
-  setMargin: React.Dispatch<React.SetStateAction<number>>;
+  layoutOptions: LayoutOptions;
+  updateLayoutOptions: (newValue: Partial<LayoutOptions>) => void;
   setEditingImageId: React.Dispatch<React.SetStateAction<string | null>>;
   editingImageId: string | null;
   pageSize: PageSizeList;
@@ -96,6 +93,13 @@ type ProjectProps = {
   getSlotCount: () => number;
   activeSlot: number | null;
   setActiveSlot: React.Dispatch<React.SetStateAction<number | null>>;
+  setModale: React.Dispatch<React.SetStateAction<JSX.Element | null>>;
+};
+
+type LayoutOptions = {
+  borderWidth: number;
+  borderColor: string;
+  margin: number;
 };
 
 export default function HomePage() {
@@ -103,9 +107,19 @@ export default function HomePage() {
   const [uploadedImages, setUploadedImages] = useState<ImageItem[]>([]);
   const [template, setTemplate] = useState<TemplateType>("grid-4");
   const [pageSize, setPageSize] = useState<PageSizeList>("a4");
-  const [borderWidth, setBorderWidth] = useState(0);
-  const [borderColor, setBorderColor] = useState("#000000");
-  const [margin, setMargin] = useState(0);
+  const [layoutOptions, setLayoutOptions] = useState<LayoutOptions>({
+    borderWidth: 0,
+    borderColor: "#000000",
+    margin: 0,
+  });
+  const [Modale, setModale] = useState<JSX.Element | null>(null);
+
+  const updateLayoutOptions = useCallback(
+    (newValue: Partial<LayoutOptions>) => {
+      setLayoutOptions((prev) => ({ ...prev, ...newValue }));
+    },
+    [],
+  );
 
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
@@ -189,12 +203,8 @@ export default function HomePage() {
         setCollageImages,
         uploadedImages,
         setUploadedImages,
-        borderWidth,
-        borderColor,
-        margin,
-        setBorderWidth,
-        setBorderColor,
-        setMargin,
+        layoutOptions,
+        updateLayoutOptions,
         setEditingImageId,
         editingImageId,
         pageSize,
@@ -202,9 +212,10 @@ export default function HomePage() {
         getSlotCount,
         activeSlot,
         setActiveSlot,
+        setModale,
       }}
     >
-      <div className="flex flex-col-reverse md:flex-row h-[100dvh] bg-gray-100 font-sans overflow-hidden print:h-auto print:overflow-visible print:block print:bg-white">
+      <div className="flex flex-col-reverse md:flex-row h-dvh bg-gray-100 font-sans overflow-hidden print:h-auto print:overflow-visible print:block print:bg-white">
         {/* Sidebar */}
         <SideBar />
 
@@ -247,10 +258,10 @@ export default function HomePage() {
               className="shadow-lg transition-all relative bg-white m-auto print:shadow-none print:m-0 print:!max-w-none print:w-[100vw] print:h-[100vh]"
               style={{
                 ...getTemplateStyle(),
-                gap: `${margin}px`,
-                padding: `${margin}px`,
-                border: `${borderWidth}px solid ${borderColor}`,
-                backgroundColor: borderColor,
+                gap: `${layoutOptions.margin}px`,
+                padding: `${layoutOptions.margin}px`,
+                border: `${layoutOptions.borderWidth}px solid ${layoutOptions.borderColor}`,
+                backgroundColor: layoutOptions.borderColor,
                 width: "100%",
                 maxWidth: `${PAGE_DIMENSIONS[pageSize].width}px`,
                 aspectRatio: `${PAGE_DIMENSIONS[pageSize].width} / ${PAGE_DIMENSIONS[pageSize].height}`,
@@ -381,6 +392,7 @@ export default function HomePage() {
 
         {/* Crop/Edit Modal */}
         {editingImageId && <CropModale />}
+        {Modale && Modale}
       </div>
     </ProjectContext.Provider>
   );
@@ -390,13 +402,7 @@ function SideBar() {
   const {
     setUploadedImages,
     setTemplate,
-    setBorderWidth,
-    setBorderColor,
-    setMargin,
     template,
-    borderWidth,
-    borderColor,
-    margin,
     uploadedImages,
     setCollageImages,
     collageImages,
@@ -405,13 +411,12 @@ function SideBar() {
     getSlotCount,
     activeSlot,
     setActiveSlot,
+    layoutOptions,
+    updateLayoutOptions,
+    setModale,
   } = useProject();
 
   const [urlInput, setUrlInput] = useState("");
-  const [editingCustomization, setEditingCustomization] = useState<
-    "border" | "margin" | null
-  >(null);
-  const [customizationInput, setCustomizationInput] = useState("");
 
   const handleAddImage = (src: string) => {
     setUploadedImages((prev) => [...prev, { id: crypto.randomUUID(), src }]);
@@ -495,9 +500,7 @@ function SideBar() {
         name: projectName,
         template,
         pageSize,
-        borderWidth,
-        borderColor,
-        margin,
+        layoutOptions,
         uploadedImages: newUploaded,
         collageImages: newCollage,
       });
@@ -530,9 +533,7 @@ function SideBar() {
 
       setTemplate(proj.template);
       setPageSize(proj.pageSize);
-      setBorderWidth(proj.borderWidth);
-      setBorderColor(proj.borderColor);
-      setMargin(proj.margin);
+      updateLayoutOptions(proj.layoutOptions);
 
       setUploadedImages(restoreUploaded);
       setCollageImages(restoreCollage);
@@ -648,66 +649,22 @@ function SideBar() {
           <label className="text-xs md:text-sm font-medium text-gray-700">
             Upload File
           </label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileUpload}
-            className="text-xs md:text-sm file:mr-2 md:file:mr-4 file:py-1 md:file:py-2 file:px-2 md:file:px-4 file:rounded file:border-0 file:text-xs md:file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 w-full"
-          />
-        </div>
-      </div>
-
-      {/* Page Size & Templates */}
-      <div className="flex flex-col gap-2 min-w-[150px] md:min-w-0 md:border-b md:pb-6 pl-4 border-l md:border-l-0 md:pl-0">
-        <h2 className="text-sm md:text-lg font-semibold whitespace-nowrap">
-          Canvas Layout
-        </h2>
-
-        <div className="flex flex-col gap-1 md:gap-2 mb-1 md:mb-2">
-          <label className="text-xs md:text-sm font-medium text-gray-700">
-            Page Size
-          </label>
-          <select
-            value={pageSize}
-            onChange={(e) => setPageSize(e.target.value as PageSizeList)}
-            className="w-full border p-1 md:p-2 rounded text-xs md:text-sm"
-          >
-            <option value="square">Square 1:1</option>
-            <option value="3.5x5">3.5" x 5"</option>
-            <option value="3.5x5-ls">3.5" x 5" Landscape</option>
-            <option value="4x6">4" x 6"</option>
-            <option value="4x6-ls">4" x 6" Landscape</option>
-            <option value="5x7">5" x 7"</option>
-            <option value="5x7-ls">5" x 7" Landscape</option>
-            <option value="letter">Letter (8.5" x 11")</option>
-            <option value="letter-ls">Letter Landscape</option>
-            <option value="a4">A4</option>
-            <option value="a4-ls">A4 Landscape</option>
-            <option value="legal">Legal</option>
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1 md:gap-2">
-          <label className="text-xs md:text-sm font-medium text-gray-700">
-            Grid Template
-          </label>
-          <select
-            value={template}
-            onChange={(e) => {
-              setTemplate(e.target.value as TemplateType);
-            }}
-            className="w-full border p-1 md:p-2 rounded text-xs md:text-sm"
-          >
-            <option value="single">Single Image</option>
-            <option value="grid-2">2-Grid</option>
-            <option value="grid-4">4-Grid</option>
-            <option value="split-left">Split Left</option>
-            <option value="split-right">Split Right</option>
-            <option value="split-top">Split Top</option>
-            <option value="split-bottom">Split Bottom</option>
-            <option value="row">Horizontal Row</option>
-            <option value="col">Vertical Column</option>
-          </select>
+          <div className="relative">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            <div className="flex items-center justify-center gap-2 bg-gray-50 border-2 border-gray-300 border-dashed rounded-lg p-4 hover:bg-gray-100 transition-colors text-gray-600 cursor-pointer group">
+              <span className="text-xl group-hover:scale-110 transition-transform">
+                📁
+              </span>
+              <span className="text-xs md:text-sm font-medium">
+                Choose from device
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -794,6 +751,60 @@ function SideBar() {
         </div>
       </div>
 
+      {/* Page Size & Templates */}
+      <div className="flex flex-col gap-2 min-w-[150px] md:min-w-0 md:border-b md:pb-6 pl-4 border-l md:border-l-0 md:pl-0">
+        <h2 className="text-sm md:text-lg font-semibold whitespace-nowrap">
+          Canvas Layout
+        </h2>
+
+        <div className="flex flex-col gap-1 md:gap-2 mb-1 md:mb-2">
+          <label className="text-xs md:text-sm font-medium text-gray-700">
+            Page Size
+          </label>
+          <select
+            value={pageSize}
+            onChange={(e) => setPageSize(e.target.value as PageSizeList)}
+            className="w-full border p-1 md:p-2 rounded text-xs md:text-sm"
+          >
+            <option value="square">Square 1:1</option>
+            <option value="3.5x5">3.5" x 5"</option>
+            <option value="3.5x5-ls">3.5" x 5" Landscape</option>
+            <option value="4x6">4" x 6"</option>
+            <option value="4x6-ls">4" x 6" Landscape</option>
+            <option value="5x7">5" x 7"</option>
+            <option value="5x7-ls">5" x 7" Landscape</option>
+            <option value="letter">Letter (8.5" x 11")</option>
+            <option value="letter-ls">Letter Landscape</option>
+            <option value="a4">A4</option>
+            <option value="a4-ls">A4 Landscape</option>
+            <option value="legal">Legal</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1 md:gap-2">
+          <label className="text-xs md:text-sm font-medium text-gray-700">
+            Grid Template
+          </label>
+          <select
+            value={template}
+            onChange={(e) => {
+              setTemplate(e.target.value as TemplateType);
+            }}
+            className="w-full border p-1 md:p-2 rounded text-xs md:text-sm"
+          >
+            <option value="single">Single Image</option>
+            <option value="grid-2">2-Grid</option>
+            <option value="grid-4">4-Grid</option>
+            <option value="split-left">Split Left</option>
+            <option value="split-right">Split Right</option>
+            <option value="split-top">Split Top</option>
+            <option value="split-bottom">Split Bottom</option>
+            <option value="row">Horizontal Row</option>
+            <option value="col">Vertical Column</option>
+          </select>
+        </div>
+      </div>
+
       {/* Customization */}
       <div className="flex flex-col gap-2 md:gap-4 md:border-b md:pb-6 min-w-[150px] md:min-w-0 pl-4 border-l md:border-l-0 md:pl-0">
         <h2 className="text-sm md:text-lg font-semibold whitespace-nowrap">
@@ -807,20 +818,21 @@ function SideBar() {
             </label>
             <button
               onClick={() => {
-                setEditingCustomization("border");
-                setCustomizationInput(borderWidth.toString());
+                setModale(<CustomizationModale type="border" />);
               }}
               className="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-0.5 rounded font-mono"
             >
-              {borderWidth}px
+              {layoutOptions.borderWidth}px
             </button>
           </div>
           <input
             type="range"
             min="0"
             max="200"
-            value={borderWidth}
-            onChange={(e) => setBorderWidth(Number(e.target.value))}
+            value={layoutOptions.borderWidth}
+            onChange={(e) =>
+              updateLayoutOptions({ borderWidth: Number(e.target.value) })
+            }
             className="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer touch-none"
           />
         </div>
@@ -829,8 +841,10 @@ function SideBar() {
           <label className="text-xs md:text-sm font-medium">Border Color</label>
           <input
             type="color"
-            value={borderColor}
-            onChange={(e) => setBorderColor(e.target.value)}
+            value={layoutOptions.borderColor}
+            onChange={(e) =>
+              updateLayoutOptions({ borderColor: e.target.value })
+            }
             className="w-full h-8 md:h-10 border rounded cursor-pointer p-0"
           />
         </div>
@@ -842,20 +856,21 @@ function SideBar() {
             </label>
             <button
               onClick={() => {
-                setEditingCustomization("margin");
-                setCustomizationInput(margin.toString());
+                setModale(<CustomizationModale type="margin" />);
               }}
               className="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-0.5 rounded font-mono"
             >
-              {margin}px
+              {layoutOptions.margin}px
             </button>
           </div>
           <input
             type="range"
             min="0"
             max="200"
-            value={margin}
-            onChange={(e) => setMargin(Number(e.target.value))}
+            value={layoutOptions.margin}
+            onChange={(e) =>
+              updateLayoutOptions({ margin: Number(e.target.value) })
+            }
             className="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer touch-none"
           />
         </div>
@@ -875,60 +890,6 @@ function SideBar() {
           >
             Trash All
           </button>
-        </div>
-      )}
-
-      {/* Value Input Modal */}
-      {editingCustomization !== null && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 text-left">
-          <div className="bg-white rounded-xl p-5 w-[80%] max-w-[320px] shadow-2xl flex flex-col gap-4 mx-auto mt-[-10vh]">
-            <h3 className="font-bold text-lg md:text-xl text-center">
-              Set{" "}
-              {editingCustomization === "border"
-                ? "Border Width"
-                : "Item Margin"}
-            </h3>
-            <div className="flex bg-gray-100 p-2 rounded-lg items-center gap-2 border border-gray-300">
-              <input
-                type="number"
-                value={customizationInput}
-                onChange={(e) => setCustomizationInput(e.target.value)}
-                className="w-full bg-transparent outline-none text-right text-lg font-mono flex-1 focus:ring-0 appearance-none"
-                autoFocus
-                placeholder="0"
-                min="0"
-                max="1000"
-              />
-              <span className="text-gray-500 font-mono text-sm mr-2 w-4">
-                px
-              </span>
-            </div>
-
-            <div className="flex gap-2 w-full mt-2">
-              <button
-                onClick={() => setEditingCustomization(null)}
-                className="flex-1 py-3 bg-gray-200 rounded-lg hover:bg-gray-300 font-medium transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  const val = parseInt(customizationInput, 10);
-                  if (!isNaN(val)) {
-                    if (editingCustomization === "border") {
-                      setBorderWidth(Math.max(0, val));
-                    } else {
-                      setMargin(Math.max(0, val));
-                    }
-                  }
-                  setEditingCustomization(null);
-                }}
-                className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
-              >
-                Set Value
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>
@@ -1037,6 +998,67 @@ function CropModale() {
             className="flex-1 md:flex-none px-4 py-3 md:py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold text-sm md:text-base transition-colors"
           >
             Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CustomizationModale({ type }: { type: "border" | "margin" }) {
+  const { updateLayoutOptions, layoutOptions, setModale } = useProject();
+  const [customizationInput, setCustomizationInput] = useState(
+    type === "border"
+      ? layoutOptions.borderWidth.toString()
+      : layoutOptions.margin.toString(),
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-100 p-4 text-left">
+      <div className="bg-white rounded-xl p-5 w-[80%] max-w-[320px] shadow-2xl flex flex-col gap-4 mx-auto mt-[-10vh]">
+        <h3 className="font-bold text-lg md:text-xl text-center">
+          Set {type === "border" ? "Border Width" : "Item Margin"}
+        </h3>
+        <div className="flex bg-gray-100 p-2 rounded-lg items-center gap-2 border border-gray-300">
+          <input
+            type="number"
+            value={customizationInput}
+            onChange={(e) => setCustomizationInput(e.target.value)}
+            className="w-full bg-transparent outline-none text-right text-lg font-mono flex-1 focus:ring-0 appearance-none"
+            autoFocus
+            placeholder="0"
+            min="0"
+            max="1000"
+          />
+          <span className="text-gray-500 font-mono text-sm mr-2 w-4">px</span>
+        </div>
+
+        <div className="flex gap-2 w-full mt-2">
+          <button
+            onClick={() => setModale(null)}
+            className="flex-1 py-3 bg-gray-200 rounded-lg hover:bg-gray-300 font-medium transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              const val = parseInt(customizationInput, 10);
+              if (!isNaN(val)) {
+                if (type === "border") {
+                  updateLayoutOptions({
+                    borderWidth: Math.max(0, val),
+                  });
+                } else {
+                  updateLayoutOptions({
+                    margin: Math.max(0, val),
+                  });
+                }
+              }
+              setModale(null);
+            }}
+            className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+          >
+            Set Value
           </button>
         </div>
       </div>

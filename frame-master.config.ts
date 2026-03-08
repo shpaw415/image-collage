@@ -2,14 +2,6 @@ import type { FrameMasterConfig } from "frame-master/server/types";
 import ReactToHtml from "frame-master-plugin-react-to-html";
 import ApplyReact from "frame-master-plugin-apply-react/plugin";
 import TailwindPlugin from "frame-master-plugin-tailwind";
-/*
-import imageOptimizer from "frame-master-plugin-image-optimizer";
-import AssetsToBuild from "frame-master-plugin-assets-to-build";
-import SVGLoader from "frame-master-svg-to-jsx-loader";
-import SEOPlugin from "frame-master-plugin-seo";
-import SiteConfig from "./site.config";
-import AutoSiteMap from "frame-master-plugin-auto-sitemap";
-*/
 import { builder } from "frame-master/build";
 
 export default {
@@ -34,40 +26,6 @@ export default {
         runtime: "bun",
       },
     }),
-    /*imageOptimizer({
-      input: "images",
-      output: "optimized",
-      skipExisting: true,
-      formats: ["webp"],
-      keepOriginal: true,
-      sizes: [320, 720, 1280],
-    }),*/
-    // SVGLoader(),
-    /*AssetsToBuild({
-      paths: [
-        {
-          src: "optimized",
-          dist: "optimized",
-        },
-        {
-          src: "static/favicon.ico",
-          dist: "favicon.ico",
-        },
-        {
-          src: "assets",
-          dist: "assets",
-        },
-        {
-          src: "robots.txt",
-          dist: "robots.txt",
-        },
-      ],
-    }),*/
-    /*SEOPlugin(SiteConfig.SEO),*/
-    /*AutoSiteMap({
-      baseUrl: SiteConfig.siteUrl,
-      authorizedExtensions: ["html"],
-    }),*/
     {
       name: "static-assets",
       version: "1.0.0",
