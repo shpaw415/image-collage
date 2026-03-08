@@ -609,8 +609,34 @@ function SideBar() {
           return true;
         },
       });
+
+      const filename = `collage-${new Date().toISOString().split("T")[0]}.png`;
+
+      // Try native share for iOS/Mobile "Save to Pictures"
+      if (navigator.canShare) {
+        try {
+          const blob = await (await fetch(dataUrl)).blob();
+          const file = new File([blob], filename, { type: "image/png" });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: "Collage",
+            });
+            return; // Exit here if native sharing succeeded
+          }
+        } catch (shareError: any) {
+          // If the user cancelled the share native dialog, abort quietly without saving again
+          if (shareError.name === "AbortError") return;
+          console.warn(
+            "Share API failed, falling back to download",
+            shareError,
+          );
+        }
+      }
+
+      // Fallback for Desktop / non-share environments
       const link = document.createElement("a");
-      link.download = `collage-${new Date().toISOString().split("T")[0]}.png`;
+      link.download = filename;
       link.href = dataUrl;
       link.click();
     } catch (err) {
