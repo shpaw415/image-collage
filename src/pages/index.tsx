@@ -408,6 +408,10 @@ function SideBar() {
   } = useProject();
 
   const [urlInput, setUrlInput] = useState("");
+  const [editingCustomization, setEditingCustomization] = useState<
+    "border" | "margin" | null
+  >(null);
+  const [customizationInput, setCustomizationInput] = useState("");
 
   const handleAddImage = (src: string) => {
     setUploadedImages((prev) => [...prev, { id: crypto.randomUUID(), src }]);
@@ -797,16 +801,27 @@ function SideBar() {
         </h2>
 
         <div className="flex flex-col gap-1 md:gap-2">
-          <label className="text-xs md:text-sm font-medium flex justify-between">
-            Border Width <span>{borderWidth}px</span>
-          </label>
+          <div className="flex justify-between items-center">
+            <label className="text-xs md:text-sm font-medium">
+              Border Width
+            </label>
+            <button
+              onClick={() => {
+                setEditingCustomization("border");
+                setCustomizationInput(borderWidth.toString());
+              }}
+              className="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-0.5 rounded font-mono"
+            >
+              {borderWidth}px
+            </button>
+          </div>
           <input
             type="range"
             min="0"
-            max="50"
+            max="200"
             value={borderWidth}
             onChange={(e) => setBorderWidth(Number(e.target.value))}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+            className="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer touch-none"
           />
         </div>
 
@@ -816,23 +831,32 @@ function SideBar() {
             type="color"
             value={borderColor}
             onChange={(e) => setBorderColor(e.target.value)}
-            className="w-full h-6 md:h-10 border rounded cursor-pointer p-0"
+            className="w-full h-8 md:h-10 border rounded cursor-pointer p-0"
           />
         </div>
 
         <div className="flex flex-col gap-1 md:gap-2">
-          <label className="text-xs md:text-sm font-medium flex justify-between">
-            Item Margin <span className="md:hidden ml-1"></span>{" "}
-            <span className="hidden md:inline">(Gap)</span>{" "}
-            <span>{margin}px</span>
-          </label>
+          <div className="flex justify-between items-center">
+            <label className="text-xs md:text-sm font-medium">
+              Item Margin <span className="hidden md:inline">(Gap)</span>
+            </label>
+            <button
+              onClick={() => {
+                setEditingCustomization("margin");
+                setCustomizationInput(margin.toString());
+              }}
+              className="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-0.5 rounded font-mono"
+            >
+              {margin}px
+            </button>
+          </div>
           <input
             type="range"
             min="0"
-            max="100"
+            max="200"
             value={margin}
             onChange={(e) => setMargin(Number(e.target.value))}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+            className="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer touch-none"
           />
         </div>
       </div>
@@ -851,6 +875,60 @@ function SideBar() {
           >
             Trash All
           </button>
+        </div>
+      )}
+
+      {/* Value Input Modal */}
+      {editingCustomization !== null && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 text-left">
+          <div className="bg-white rounded-xl p-5 w-[80%] max-w-[320px] shadow-2xl flex flex-col gap-4 mx-auto mt-[-10vh]">
+            <h3 className="font-bold text-lg md:text-xl text-center">
+              Set{" "}
+              {editingCustomization === "border"
+                ? "Border Width"
+                : "Item Margin"}
+            </h3>
+            <div className="flex bg-gray-100 p-2 rounded-lg items-center gap-2 border border-gray-300">
+              <input
+                type="number"
+                value={customizationInput}
+                onChange={(e) => setCustomizationInput(e.target.value)}
+                className="w-full bg-transparent outline-none text-right text-lg font-mono flex-1 focus:ring-0 appearance-none"
+                autoFocus
+                placeholder="0"
+                min="0"
+                max="1000"
+              />
+              <span className="text-gray-500 font-mono text-sm mr-2 w-4">
+                px
+              </span>
+            </div>
+
+            <div className="flex gap-2 w-full mt-2">
+              <button
+                onClick={() => setEditingCustomization(null)}
+                className="flex-1 py-3 bg-gray-200 rounded-lg hover:bg-gray-300 font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const val = parseInt(customizationInput, 10);
+                  if (!isNaN(val)) {
+                    if (editingCustomization === "border") {
+                      setBorderWidth(Math.max(0, val));
+                    } else {
+                      setMargin(Math.max(0, val));
+                    }
+                  }
+                  setEditingCustomization(null);
+                }}
+                className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+              >
+                Set Value
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
