@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-03-04T19:21:14.181Z",
-  "images": {
-    "logo.png": {
-      "original": "logo.png",
-      "width": 402,
-      "height": 316,
-      "variants": [
-        {
-          "format": "webp",
-          "size": 320,
-          "path": "logo-320w.webp",
-          "width": 320,
-          "height": 252
-        }
-      ]
-    }
-  }
+	"generatedAt": "2026-03-04T19:21:14.181Z",
+	"images": {
+		"logo.png": {
+			"original": "logo.png",
+			"width": 402,
+			"height": 316,
+			"variants": [
+				{
+					"format": "webp",
+					"size": 320,
+					"path": "logo-320w.webp",
+					"width": 320,
+					"height": 252
+				}
+			]
+		}
+	}
 }
