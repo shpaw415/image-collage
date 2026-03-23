@@ -63,6 +63,21 @@ const PAGE_DIMENSIONS: Record<PageSizeList, { width: number; height: number }> =
 		"3.5x5-ls": { width: 480, height: 336 }, // 3.5x5 Landscape
 	};
 
+const PAGE_PRINT_SIZE: Record<PageSizeList, string> = {
+	square: "8.5in 8.5in",
+	letter: "8.5in 11in",
+	a4: "210mm 297mm",
+	legal: "8.5in 14in",
+	"letter-ls": "11in 8.5in",
+	"a4-ls": "297mm 210mm",
+	"4x6": "4in 6in",
+	"4x6-ls": "6in 4in",
+	"5x7": "5in 7in",
+	"5x7-ls": "7in 5in",
+	"3.5x5": "3.5in 5in",
+	"3.5x5-ls": "5in 3.5in",
+};
+
 interface ImageItem {
 	id: string;
 	src: string;
@@ -602,6 +617,39 @@ function SideBar() {
 		}
 	};
 
+	const handlePrint = async () => {
+		const node = document.getElementById("collage-export-target");
+		if (!node) return;
+		try {
+			const dataUrl = await domToJpeg(node, {
+				scale: 4,
+				backgroundColor: layoutOptions.borderColor,
+				filter: (el: Node) => {
+					if (el instanceof Element)
+						return !el.hasAttribute("data-hide-on-export");
+					return true;
+				},
+			});
+			const win = window.open("", "_blank");
+			if (win) {
+				const style = win.document.createElement("style");
+				style.textContent = `@page { size: ${PAGE_PRINT_SIZE[pageSize]}; margin: 0; } body { margin: 0; padding: 0; }`;
+				win.document.head.appendChild(style);
+				const img = win.document.createElement("img");
+				img.src = dataUrl;
+				img.style.cssText = "width:100%;display:block";
+				img.onload = () => {
+					win.print();
+					win.close();
+				};
+				win.document.body.appendChild(img);
+			}
+		} catch (err) {
+			console.error("Failed to print", err);
+			alert("Failed to prepare print. Try saving the image instead.");
+		}
+	};
+
 	const handleSaveImage = async () => {
 		const node = document.getElementById("collage-export-target");
 		if (!node) return;
@@ -1021,7 +1069,7 @@ function SideBar() {
 					<div className="flex flex-1 w-full gap-2">
 						<button
 							type="button"
-							onClick={() => window.print()}
+							onClick={handlePrint}
 							className="flex-1 bg-green-100 text-green-700 py-1.5 md:py-2 rounded text-xs md:text-base font-medium hover:bg-green-200 whitespace-nowrap transition-colors"
 						>
 							🖨️ Print
